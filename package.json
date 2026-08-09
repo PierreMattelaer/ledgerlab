@@ -1,0 +1,11 @@
+{
+  "name": "ledgerlab",
+  "private": true,
+  "workspaces": ["apps/web", "apps/api"],
+  "scripts": {
+    "dev:web": "npm --workspace apps/web run dev",
+    "dev:api": "npm --workspace apps/api run dev",
+    "test": "npm --workspace apps/api test",
+    "build": "npm --workspace apps/api run build && npm --workspace apps/web run build"
+  }
+}

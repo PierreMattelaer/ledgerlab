@@ -1,0 +1,144 @@
+openapi: 3.0.3
+info:
+  title: LedgerLab API
+  version: 1.0.0
+  description: Synthetic multi-tenant expense management demo API.
+servers:
+  - url: http://localhost:4000
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Expense:
+      type: object
+      properties:
+        id: { type: integer }
+        organization_id: { type: integer }
+        user_id: { type: integer }
+        amount: { type: string, example: "42.50" }
+        currency: { type: string, example: EUR }
+        category: { type: string, example: Meals }
+        description: { type: string, example: Synthetic team lunch }
+        spent_at: { type: string, format: date }
+        status: { type: string, enum: [pending, approved, rejected] }
+paths:
+  /health:
+    get:
+      summary: Health check
+      responses:
+        '200': { description: Healthy }
+  /auth/login:
+    post:
+      summary: Log in as a seeded synthetic user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, example: alice@acme.test }
+      responses:
+        '200': { description: JWT and user }
+        '401': { description: Unknown demo user }
+  /expenses:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: List expenses visible to current user
+      responses:
+        '200':
+          description: Expenses
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Expense' }
+    post:
+      security: [{ bearerAuth: [] }]
+      summary: Create an expense
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [amount, category, description]
+              properties:
+                amount: { type: number, example: 19.99 }
+                currency: { type: string, example: EUR }
+                category: { type: string, example: Software }
+                description: { type: string, example: Synthetic SaaS subscription }
+                spentAt: { type: string, format: date }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Expense' }
+  /expenses/{id}:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: View expense details
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: Expense with receipts and approvals }
+        '404': { description: Not visible in this tenant/user scope }
+  /expenses/{id}/receipt:
+    post:
+      security: [{ bearerAuth: [] }]
+      summary: Upload receipt
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [receipt]
+              properties:
+                receipt: { type: string, format: binary }
+      responses:
+        '201': { description: Receipt metadata created }
+  /expenses/{id}/decision:
+    post:
+      security: [{ bearerAuth: [] }]
+      summary: Approve or reject an expense
+      description: Manager or admin only.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [decision]
+              properties:
+                decision: { type: string, enum: [approved, rejected] }
+                comment: { type: string }
+      responses:
+        '200': { description: Updated expense }
+        '403': { description: Wrong role }
+        '404': { description: Expense not in tenant }
+  /admin/overview:
+    get:
+      security: [{ bearerAuth: [] }]
+      summary: Organization admin overview
+      responses:
+        '200': { description: Expense summary and users for current organization }
+        '403': { description: Admin only }

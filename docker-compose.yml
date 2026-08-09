@@ -1,0 +1,50 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ledgerlab
+      POSTGRES_PASSWORD: ledgerlab
+      POSTGRES_DB: ledgerlab
+    ports:
+      - "5432:5432"
+    volumes:
+      - ledgerlab-db:/var/lib/postgresql/data
+      - ./apps/api/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./apps/api/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ledgerlab -d ledgerlab"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      target: api
+    environment:
+      DATABASE_URL: postgres://ledgerlab:ledgerlab@db:5432/ledgerlab
+      JWT_SECRET: synthetic-demo-secret
+      OPENAPI_PATH: /app/openapi.yaml
+      UPLOAD_DIR: /app/uploads
+    ports:
+      - "4000:4000"
+    volumes:
+      - ledgerlab-uploads:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      target: web
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:4000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+
+volumes:
+  ledgerlab-db:
+  ledgerlab-uploads:
