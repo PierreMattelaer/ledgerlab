@@ -1,4 +1,4 @@
-FROM node:22-alpine AS base
+FROM node:26.5.0-alpine AS base
 WORKDIR /app
 COPY package*.json ./
 COPY apps/api/package*.json apps/api/
@@ -9,7 +9,7 @@ COPY . .
 FROM base AS api-build
 RUN npm --workspace apps/api run build
 
-FROM node:22-alpine AS api
+FROM node:26.5.0-alpine AS api
 WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=base /app/node_modules ./node_modules
@@ -23,7 +23,7 @@ ARG NEXT_PUBLIC_API_URL=http://localhost:4000
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 RUN npm --workspace apps/web run build
 
-FROM node:22-alpine AS web
+FROM node:26.5.0-alpine AS web
 WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=base /app/node_modules ./node_modules
